@@ -73,7 +73,7 @@ function Admin() {
     cargarCadenas();
     cargarSucursales();
     cargarVisitas();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cargarVisitas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFiltrar = (e) => {
     e.preventDefault();
@@ -107,9 +107,12 @@ function Admin() {
 
   const handleDescargarFoto = (foto) => {
     if (!foto.url) return;
+    // Use only the last segment of the path and sanitize it
+    const rawName = (foto.archivo || "").split("/").pop() || `foto_${foto.id}.jpg`;
+    const safeName = rawName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const a = document.createElement("a");
     a.href = foto.url;
-    a.download = foto.archivo ? foto.archivo.split("/").pop() : "foto.jpg";
+    a.download = safeName;
     a.target = "_blank";
     a.rel = "noreferrer";
     document.body.appendChild(a);

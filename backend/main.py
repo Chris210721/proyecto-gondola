@@ -2,8 +2,9 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import os
+import re
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -110,7 +111,7 @@ async def create_visita(
         "marca_id": marca_id,
         "producto_id": producto_id,
         "estado": "pendiente",
-        "fecha": datetime.utcnow().isoformat(),
+        "fecha": datetime.now(timezone.utc).isoformat(),
     }).execute()
     return {"data": res.data}
 
@@ -132,7 +133,7 @@ async def finalizar_visita(visita_id: int):
     db = get_db()
     res = db.table("visitas").update({
         "estado": "finalizada",
-        "fecha_finalizacion": datetime.utcnow().isoformat(),
+        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
     }).eq("id", visita_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Visita no encontrada")
@@ -162,7 +163,9 @@ async def get_fotos(visita_id: int):
 async def upload_foto(visita_id: int = Query(...), file: UploadFile = File(...)):
     db = get_db()
     contents = await file.read()
-    file_path = f"visita_{visita_id}/{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+    # Sanitize filename: keep only alphanumerics, dots, dashes, underscores
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", os.path.basename(file.filename or "foto.jpg"))
+    file_path = f"visita_{visita_id}/{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{safe_name}"
 
     # Upload to Supabase Storage
     try:
